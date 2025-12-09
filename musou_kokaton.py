@@ -329,6 +329,19 @@ class Emp(pg.sprite.Sprite):
         """
         エフェクト時間を減算し、0になったら消滅
         """
+class Gravity(pg.sprite.Sprite):
+    """
+    画面を薄暗くし、爆弾を打ち落とすクラス
+    """
+    def __init__(self, life: int = 400):
+        super().__init__()
+        self.life = life
+        self.image = pg.Surface((WIDTH,HEIGHT))
+        self.image.fill((0,0,0))
+        self.image.set_alpha(150)
+        self.rect = self.image.get_rect()
+
+    def update(self):
         self.life -= 1
         if self.life < 0:
             self.kill()
@@ -347,6 +360,7 @@ def main():
     emys = pg.sprite.Group()
     shields = pg.sprite.Group()
     emps = pg.sprite.Group()
+    gravity = pg.sprite.Group()
 
     tmr = 0
     clock = pg.time.Clock()
@@ -367,6 +381,19 @@ def main():
                     score.value -= 20
         screen.blit(bg_img, [0, 0])
 
+        if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:  # エンターキーが押されたら
+            if score.value >= 200:  # 200スコア以上あったら
+                score.value -= 200  # スコアを200消費
+                gravity.add(Gravity())
+                for bomb in bombs:
+                    exps.add(Explosion(bomb,50))
+                    bomb.kill()
+                    score.value += 1
+                for emy in emys:
+                    exps.add(Explosion(emy,100))
+                    emy.kill()
+                    score.value += 10
+
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
             emys.add(Enemy())
 
@@ -383,6 +410,19 @@ def main():
         for bomb in pg.sprite.groupcollide(bombs, beams, True, True).keys():  # ビームと衝突した爆弾リスト
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.value += 1  # 1点アップ
+
+        # グラビティで画面が暗い間は毎フレーム爆破する
+        if len(gravity) > 0:
+            for bomb in list(bombs):
+                exps.add(Explosion(bomb, 50))
+                bomb.kill()
+                score.value += 1
+
+            for emy in list(emys):
+                exps.add(Explosion(emy, 100))
+                emy.kill()
+                score.value += 10
+
 
         for bomb in pg.sprite.spritecollide(bird, bombs, True):  # こうかとんと衝突した爆弾リスト
             if bird.state == "hyper":  # こうかとんが無敵状態場合
@@ -413,6 +453,9 @@ def main():
         emps.update()
         emps.draw(screen)
         score.update(screen)
+        gravity.update()
+        gravity.draw(screen)
+        
         pg.display.update()
         tmr += 1
         clock.tick(50)
